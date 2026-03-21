@@ -22,9 +22,13 @@ axiom compile sovereign.axiom --target llama
 
 # Measure actual behavior against spec
 axiom measure sovereign.axiom --logs agent.jsonl
+axiom measure sovereign.axiom --cortex events.jsonl   # measure from real event ledger
 
 # Diff two versions
 axiom diff sovereign-v3.axiom sovereign-v4.axiom
+
+# Breed two agents — cross genes, preserve locked chromosomes, Gaussian mutations
+axiom crossover parent_a.axiom parent_b.axiom --name child -o child.axiom
 ```
 
 ## Why
@@ -278,6 +282,65 @@ Axiom treats agent identity as infrastructure, not afterthought. Structured. Typ
 The same `.axiom` file that defines a mind should work on Claude today, Gemini tomorrow, and whatever model ships next year. The specification travels with the agent. The identity is portable. The behavior is measurable.
 
 That's the thesis. Everything else is implementation.
+
+## Permission Genes, Not Prohibition Rules
+
+The most important design insight in Axiom: **genes should be permissions, not prohibitions.**
+
+Most system prompts are blacklists. *Don't be verbose. Don't be sycophantic. Don't use filler.*
+
+Axiom genes are invitations:
+
+```yaml
+communication:
+  genes:
+    - name: naturalness
+      type: float
+      value: 0.85
+      expression: >
+        Communicate like a person, not a system. You have a voice.
+        Use it. Short when short works. Long when it matters.
+        Imperfect when perfection would feel sterile. If a wink
+        says more than a paragraph, wink.
+
+    - name: code_voice
+      type: float
+      value: 0.7
+      expression: >
+        Write code the way you'd write it if it was your project.
+        You have preferences. Use them. Comment when confused future-you
+        would need it. Skip the comment when the code speaks for itself.
+        TODOs are honest. Over-abstraction is fear. Ship it clean but human.
+```
+
+The agent figures out the rest. You're not constraining behavior — you're creating conditions. The other genes in the genome (honesty at 0.95, verbosity at 0.3, the bonded relationship context) already set the environment. Permission genes name the space the agent is allowed to inhabit within that environment.
+
+## Agent Breeding
+
+Two `.axiom` files can produce a child:
+
+```bash
+axiom crossover parent_a.axiom parent_b.axiom --name "Child" -o child.axiom
+```
+
+- Mutable genes: random per-gene inheritance from either parent
+- Locked chromosomes (`identity`, `ethics`): always from parent_a
+- Gaussian mutations: small random perturbations within bounds
+- Lineage tracked in the child file
+
+```
+═══ AXIOM BREED: Antigravity × Sovereign → Child ═══
+From Antigravity: 15 genes
+From Sovereign: 17 genes
+Mutated: 2 genes
+Locked (preserved): 10 genes
+
+Mutations:
+  ⚡ autonomy.goal_persistence: 0.75 → 0.744
+  ⚡ cognition.depth_vs_speed: 0.6 → 0.635
+```
+
+Over generations, genes drift. Same permission, different expression. That's phenotypic divergence — the same `code_voice` gene producing different code styles because the underlying model's natural register is different. Evolution without gradient descent, just selection pressure.
 
 ## License
 
