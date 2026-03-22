@@ -29,15 +29,6 @@ axiom diff sovereign-v3.axiom sovereign-v4.axiom
 
 # Breed two agents — cross genes, preserve locked chromosomes, Gaussian mutations
 axiom crossover parent_a.axiom parent_b.axiom --name child -o child.axiom
-
-# Evaluate with live context — see effective genome after expression rules fire
-axiom eval sovereign.axiom -c task_type=debugging
-
-# Mutate a gene — tracked in a mutation ledger
-axiom mutate sovereign.axiom "verbosity=0.4" -r "user prefers concise"
-
-# View mutation history
-axiom mutations sovereign.axiom
 ```
 
 ## Why
@@ -323,62 +314,6 @@ communication:
 ```
 
 The agent figures out the rest. You're not constraining behavior — you're creating conditions. The other genes in the genome (honesty at 0.95, verbosity at 0.3, the bonded relationship context) already set the environment. Permission genes name the space the agent is allowed to inhabit within that environment.
-
-## Runtime (v0.2.0)
-
-The runtime module evaluates an `.axiom` file against live context and tracks gene mutations over time.
-
-### Evaluate with Context
-
-```bash
-# See which genes change during debugging
-axiom eval agent.axiom -c task_type=debugging
-
-# Render as a prompt-injectable block
-axiom eval agent.axiom -c task_type=creative --render
-
-# Auto-detect context from environment
-axiom eval agent.axiom --auto-context
-```
-
-### Mutate Genes
-
-```bash
-# Adjust a gene with reason tracking
-axiom mutate agent.axiom "verbosity=0.4" -r "operator prefers concise output"
-
-# View mutation history
-axiom mutations agent.axiom
-```
-
-Output:
-```
-═══ MUTATION HISTORY: Sovereign (3 entries) ═══
-  [2026-03-15T10:30:00] verbosity: 0.35 → 0.4 — operator prefers concise output
-  [2026-03-18T14:22:00] curiosity_drive: 0.7 → 0.8 — more exploratory behavior
-  [2026-03-21T21:44:50] depth_vs_speed: 0.5 → 0.6 — balance towards thoroughness
-```
-
-Mutations are tracked in a `.mutations.jsonl` ledger alongside the `.axiom` file. Immutable genes and locked chromosomes refuse mutations automatically.
-
-### Python API
-
-```python
-from axiom.runtime import AxiomRuntime
-
-runtime = AxiomRuntime("sovereign.axiom")
-
-# Evaluate with context
-genome = runtime.evaluate({"task_type": "debugging", "errors": 5})
-print(genome.get("cognition.verification_drive"))  # → 0.98
-print(genome.fired_rules)  # → ["task_type == debugging", "errors > 3"]
-
-# Programmatic mutation
-runtime.apply_mutation("verbosity", 0.4, reason="user feedback")
-
-# Render for prompt injection
-print(genome.render())
-```
 
 ## Agent Breeding
 

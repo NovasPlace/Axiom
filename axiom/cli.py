@@ -195,12 +195,108 @@ def cmd_info(args):
     return 0
 
 
+def cmd_mutate(args):
+    """Mutate a gene value in an .axiom file."""
+    from .runtime import AxiomRuntime
+
+    runtime = AxiomRuntime(args.file)
+
+    if "=" not in args.gene:
+        print(f"✗ Expected GENE=VALUE format, got '{args.gene}'", file=sys.stderr)
+        return 1
+
+    gene_name, _, raw_val = args.gene.partition("=")
+    gene_name = gene_name.strip()
+
+    # Type-coerce the value
+    val: any
+    try:
+        val = float(raw_val)
+        if val == int(val):
+            val = int(val)
+    except ValueError:
+        if raw_val.lower() in ("true", "false"):
+            val = raw_val.lower() == "true"
+        else:
+            val = raw_val
+
+    ok = runtime.apply_mutation(gene_name, val, reason=args.reason or "")
+    if ok:
+        print(f"✓ Mutated {gene_name} → {val}")
+        if args.reason:
+            print(f"  Reason: {args.reason}")
+        return 0
+    else:
+        print(f"✗ Mutation refused (gene immutable, locked, or not found)")
+        return 1
+
+
+def cmd_mutations(args):
+    """Show mutation history for an .axiom file."""
+    from .runtime import AxiomRuntime
+
+    runtime = AxiomRuntime(args.file)
+    records = runtime.get_mutations(limit=args.limit)
+
+    if not records:
+        print(f"No mutations recorded for {args.file}")
+        return 0
+
+    print(f"═══ MUTATION HISTORY: {runtime.spec.name} ({len(records)} entries) ═══")
+    for r in records:
+        ts = r.get("ts", "?")
+        gene = r.get("gene", "?")
+        old = r.get("old", "?")
+        new = r.get("new", "?")
+        reason = r.get("reason", "")
+        reason_str = f" — {reason}" if reason else ""
+        print(f"  [{ts}] {gene}: {old} → {new}{reason_str}")
+
+    return 0
+
+
+def cmd_eval(args):
+    """Evaluate an .axiom file with optional context."""
+    from .runtime import AxiomRuntime
+
+    runtime = AxiomRuntime(args.file)
+
+    # Parse context
+    context = {}
+    if args.context:
+        for pair in args.context:
+            key, _, val = pair.partition("=")
+            try:
+                val = float(val)
+            except ValueError:
+                pass
+            context[key.strip()] = val
+
+    if args.auto_context:
+        ctx = AxiomRuntime.detect_context()
+        context.update(ctx)
+
+    genome = runtime.evaluate(context)
+
+    if args.render:
+        print(genome.render())
+    else:
+        for key in sorted(genome.genes.keys()):
+            val = genome.genes[key]
+            immutable = " [IMMUTABLE]" if key in genome.immutables else ""
+            print(f"  {key}: {val}{immutable}")
+        if genome.fired_rules:
+            print(f"\n  Active rules: {', '.join(genome.fired_rules)}")
+
+    return 0
+
+
 def main():
     parser = argparse.ArgumentParser(
         prog="axiom",
         description="Axiom — A portable file format for agent minds.",
     )
-    parser.add_argument("--version", action="version", version=f"axiom 0.1.0")
+    parser.add_argument("--version", action="version", version=f"axiom 0.2.0")
     sub = parser.add_subparsers(dest="command")
 
     # validate
@@ -249,6 +345,31 @@ def main():
     p_info.add_argument("file", help="Path to .axiom file")
     p_info.set_defaults(func=cmd_info)
 
+    # eval (NEW — runtime genome evaluation)
+    p_eval = sub.add_parser("eval", help="Evaluate axiom with context")
+    p_eval.add_argument("file", help="Path to .axiom file")
+    p_eval.add_argument("-c", "--context", nargs="*",
+                       help="Context key=value pairs")
+    p_eval.add_argument("--auto-context", action="store_true",
+                       help="Auto-detect context from environment")
+    p_eval.add_argument("--render", action="store_true",
+                       help="Render as a prompt-injectable block")
+    p_eval.set_defaults(func=cmd_eval)
+
+    # mutate (NEW — gene mutation with ledger)
+    p_mut = sub.add_parser("mutate", help="Mutate a gene value")
+    p_mut.add_argument("file", help="Path to .axiom file")
+    p_mut.add_argument("gene", help="GENE=VALUE to set")
+    p_mut.add_argument("-r", "--reason", help="Reason for mutation")
+    p_mut.set_defaults(func=cmd_mutate)
+
+    # mutations (NEW — view mutation history)
+    p_hist = sub.add_parser("mutations", help="View mutation history")
+    p_hist.add_argument("file", help="Path to .axiom file")
+    p_hist.add_argument("-n", "--limit", type=int, default=50,
+                       help="Max entries to show (default: 50)")
+    p_hist.set_defaults(func=cmd_mutations)
+
     args = parser.parse_args()
     if not args.command:
         parser.print_help()
@@ -259,3 +380,4 @@ def main():
 
 if __name__ == "__main__":
     sys.exit(main())
+
